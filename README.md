@@ -1,2 +1,4 @@
-# speake
- Vocal chat bot
+# todospeak
+
+Talk to your todo list
+
