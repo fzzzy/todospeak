@@ -1,0 +1,65 @@
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    padding-top: 1em;
+    padding-bottom: 5em;
+    width: 30em;
+    font-family: sans-serif;
+    padding-left: 3em;
+}
+
+.user-chat {
+    padding: 1em;
+    border: 1px solid black;
+    border-radius: 0.5em;
+    margin-bottom: 1.5em;
+}
+
+form[id="chat"] {
+    position: fixed;
+    bottom: 1em;
+    left: 1em;
+    right: 1em;
+    height: 3em;
+    display: flex;
+    justify-content: space-between;
+}
+
+textarea {
+    flex: 0 1 80%;
+    /* This means the textarea will take up 80% of the available space */
+    resize: none;
+    border-radius: 2em;
+    padding: 1em;
+    padding-left: 48px;
+}
+
+button[id="generate"] {
+    flex: 0 1 17%;
+    margin: 0.5em;
+    /* This means the button will take up 20% of the available space */
+}
+
+
+button[id="record"] {
+    position: fixed;
+    bottom: 18px;
+    left: 16px;
+    font-size: 32px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+}
+
+button[id="mute"] {
+    position: fixed;
+    top: 18px;
+    right: 64px;
+    font-size: 32px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+}
