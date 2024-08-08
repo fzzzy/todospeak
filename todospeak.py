@@ -33,6 +33,7 @@ def tool(tool_func, name, desc, params={}):
     }
     """
     global ALL_TOOLS
+    global ALL_TOOLS_LIST
     schema = {
         k: {"type": t, "description": d}
         for (k, (t, d)) in params.items()
@@ -45,7 +46,7 @@ def tool(tool_func, name, desc, params={}):
             "input_schema": {
                 "type": "object",
                 "properties": schema,
-                "required": params.keys()
+                "required": list(params.keys())
             }
         }
     }
@@ -55,24 +56,30 @@ def tool(tool_func, name, desc, params={}):
 
 
 add_list = tool(
-    lambda x: print("add", x),
+    lambda name: print("add", name),
     "add_list",
     "Add a new todo list with a given name. The new todo list is automatically selected after creation.",
     {"name": ("string", "The name of the new todo list.")})
 
 
 delete_list = tool(
-    lambda x: print("delete", x),
+    lambda index: print("delete", index),
     "delete_list",
-    "Delete the todo list with the given name.",
-    {"name": ("string", "The name of the todo list to delete.")})
+    "Delete the todo list with the given index. Indices start at 1.",
+    {"index": ("number", "The index of the todo list to delete. Indices start at 1.")})
+
+
+list_lists = tool(
+    lambda: print("list lists"),
+    "list_lists",
+    "List all the todo lists.")
 
 
 select_list = tool(
-    lambda x: print("select", x),
+    lambda index: print("select", index),
     "select_list",
     "Select a todo list with a given name, such that commands affecting todo items apply to the selected list.",
-    {"name": ("string", "The name of the todo list to select.")})
+    {"index": ("number", "The index of the todo list to select. Indices start at 1.")})
 
 
 read_list = tool(
@@ -83,27 +90,27 @@ read_list = tool(
     
 
 add_todo = tool(
-    lambda x: print("add todo", x),
+    lambda todo: print("add todo", todo),
     "add_todo",
     "Add a new todo item to the selected list.",
     {"todo": ("string", "The text of the todo.")})
 
 
 delete_todo = tool(
-    lambda x: print("del todo", x),
+    lambda index: print("del todo", index),
     "delete_todo",
-    "Delete the numbered todo item from the selected list. Indexes start at 1.",
-    {"todo": (
-        "integer",
+    "Delete the numbered todo item from the selected list. Indices start at 1.",
+    {"index": (
+        "number",
         "The index of the todo to delete from the currently selected list.")})
 
 
 read_todo = tool(
     lambda x: print("read todo", x),
     "read_todo",
-    "Return the contents of the todo at the given index in the selected list. Indexes start at 1.",
+    "Return the contents of the todo at the given index in the selected list. Indices start at 1.",
     {"todo": (
-        "integer",
+        "number",
         "The index of the todo to return.")})
 
 
@@ -112,8 +119,11 @@ do_not_understand = tool(
     "do_not_understand",
     "If the user input does not seem to apply to any of the other tools, this tool must be used by default. The error parameter can be used to ask the user for clarification on their input.",
     {"error": (
-        "error",
+        "string",
         "The message to show to the user asking for clarification on their request.")})
+
+
+print(ALL_TOOLS_LIST)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -159,24 +169,65 @@ async def event_generator(q, initial=None):
     loop = asyncio.get_running_loop()
     while True:
         chat = await q.get()
+        print("GOT CHAT", chat)
         if chat is None:
             print("EXITING")
             break
-        history.append(chat)
+        if len(history) and history[-1]['role'] == "user":
+            history[-1]['content'].append(
+                {"type": "text", "text": chat["content"]})
+        else:
+            history.append(chat)
         result = await loop.run_in_executor(
             thread_pool,
             lambda: client.messages.create(
-                model="claude-3-opus-20240229",
+                #model="claude-3-5-sonnet-20240620",
+                model="claude-3-haiku-20240307",
                 max_tokens=1024,
+                tools=ALL_TOOLS_LIST,
+                tool_choice={"type": "any"},
                 messages=history))
-        #print(dict(result))
+
         assistant_content = []
         for x in result.content:
             if x.type == "text":
                 assistant_content.append({"type": "text", "text": x.text})
                 jsondata = json.dumps({"content": x.text})
                 yield f"data: {jsondata}\n\n"
-        history.append({"role": "assistant", "content": assistant_content})
+            elif x.type == "tool_use":
+                tool_id = x.id
+                tool_name = x.name
+                tool_input = x.input
+                assistant_content.append({
+                    "type": "tool_use",
+                    "id": tool_id,
+                    "name": tool_name,
+                    "input": tool_input,
+                })
+                tool_output = ALL_TOOLS[tool_name]["tool"](**tool_input)
+                history.append({
+                    "role": "assistant",
+                    "content": assistant_content})
+                assistant_content = []
+                history.append({
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_id,
+                            "content": str(tool_output)
+                        }
+                    ]
+                })
+                print(result)
+                print("TOOL OUTPUT", tool_output)
+                jsondata = json.dumps({
+                    "content": f"using tool {tool_name}: {tool_output}"
+                })
+                yield f"data: {jsondata}\n\n"
+                yield 'data: {"finish_reason": "stop"}\n\n'
+        if len(assistant_content):
+            history.append({"role": "assistant", "content": assistant_content})
         print("new history", history)
         yield 'data: {"finish_reason": "stop"}\n\n'
 
@@ -185,10 +236,10 @@ async def event_generator(q, initial=None):
 async def conversation():
     conv_id = str(uuid.uuid4())
     queue = asyncio.Queue()
-    await queue.put({
-        "role": "user",
-        "content": "Hello"
-    })
+    # await queue.put({
+    #     "role": "user",
+    #     "content": "Hello"
+    # })
     convs[conv_id] = queue
     return StreamingResponse(
         event_generator(queue, initial={"id": conv_id}),
