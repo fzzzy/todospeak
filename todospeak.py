@@ -166,6 +166,7 @@ async def event_generator(q, initial=None):
     if initial is not None:
         jsondata = json.dumps(initial)
         yield f"data: {jsondata}\n\n"
+        yield 'data: {"finish_reason": "stop"}\n\n'
     loop = asyncio.get_running_loop()
     while True:
         chat = await q.get()
