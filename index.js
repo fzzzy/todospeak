@@ -113,9 +113,9 @@ async function postConversation() {
                 document.body.appendChild(eventDataDiv);
             } else {
                 unspoken += result.content;
-                const match = unspoken.match(punctuationRegex);
+                let match = unspoken.match(punctuationRegex);
 
-                if (match) {
+                while (match) {
                     const sentenceEndIndex = unspoken.indexOf(match[0]) + 1;
                     const speaking = unspoken.slice(0, sentenceEndIndex);
                     unspoken = unspoken.slice(sentenceEndIndex);
@@ -129,6 +129,7 @@ async function postConversation() {
                         }
         
                     }
+                    match = unspoken.match(punctuationRegex);
                 }
 
                 eventDataDiv.dataset.content += result.content;
