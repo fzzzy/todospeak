@@ -178,6 +178,7 @@ async def event_generator(q, initial=None):
                 yield f"data: {jsondata}\n\n"
         history.append({"role": "assistant", "content": assistant_content})
         print("new history", history)
+        yield 'data: {"finish_reason": "stop"}\n\n'
 
 
 @app.get("/conversation")
