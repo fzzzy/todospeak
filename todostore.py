@@ -12,12 +12,15 @@ class Lists(object):
         self.cursor = self.db.cursor()
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS lists
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                               name TEXT NOT NULL)''')
+                               name TEXT NOT NULL,
+                               created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS todos
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
                                todo TEXT NOT NULL,
                                complete BOOLEAN NOT NULL CHECK (complete IN (0, 1)),
                                list_id INTEGER,
+                               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               completed_at DATETIME DEFAULT NULL,
                                FOREIGN KEY(list_id) REFERENCES lists(id))''')
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS metadata
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -127,7 +130,7 @@ class Todos(object):
             (self.selected_list, index))
         result = self.cursor.fetchall()
         self.cursor.execute(
-            "UPDATE todos SET complete = 1 WHERE id=?",
+            "UPDATE todos SET complete = 1, completed_at = CURRENT_TIMESTAMP WHERE id=?",
             (result[-1][0], ))
         self.db.commit()
 
@@ -137,7 +140,7 @@ class Todos(object):
             (self.selected_list, index))
         result = self.cursor.fetchall()
         self.cursor.execute(
-            "UPDATE todos SET complete = 0 WHERE id=?",
+            "UPDATE todos SET complete = 0, completed_at = NULL WHERE id=?",
             (result[-1][0], ))
         self.db.commit()
 
