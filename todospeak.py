@@ -59,7 +59,7 @@ def tool(tool_func, name, desc, params={}):
 
 def add_list_glue(db, name):
     db.add_list(name)
-    return "List added."
+    return "List added. Lists:\n\n" + list_lists_glue(db)
 
 
 add_list = tool(
@@ -124,6 +124,21 @@ read_list = tool(
     {})
 
 
+def read_complete_glue(db):
+    result = ""
+    todos = db.select_list(db.selected_list)
+    for i, item in enumerate(todos.read_complete()):
+        result += f"{i + 1}. {item[1]}\n"
+    return result
+
+
+read_complete = tool(
+    read_complete_glue,
+    "read_complete",
+    "Return the completed items of the selected todo list.",
+    {})
+
+
 def add_todo_glue(db, todo):
     todos = db.select_list(db.selected_list)
     todos.add_todo(todo)
@@ -154,6 +169,36 @@ delete_todo = tool(
         "The index of the todo to delete from the currently selected list.")})
 
 
+def mark_complete_glue(db, index):
+    todos = db.select_list(db.selected_list)
+    todos.mark_complete(index)
+    return "Marked complete. Completed items:\n\n" + read_complete_glue(db)
+
+
+mark_complete = tool(
+    mark_complete_glue,
+    "mark_complete",
+    "Mark the numbered todo item from the selected list as complete. Indices start at 1.",
+    {"index": (
+        "number",
+        "The index of the todo to mark as complete from the currently selected list.")})
+
+
+def mark_incomplete_glue(db, index):
+    todos = db.select_list(db.selected_list)
+    todos.mark_incomplete(index)
+    return "Marked incomplete. Incomplete items:\n\n" + read_list_glue(db)
+
+
+mark_incomplete = tool(
+    mark_incomplete_glue,
+    "mark_incomplete",
+    "Mark the numbered todo item from the selected list as incomplete. Indices start at 1.",
+    {"index": (
+        "number",
+        "The index of the todo to mark as incomplete from the currently selected list.")})
+
+
 # reorder_todo = tool(
 #     lambda db, origin, destination: print("reorder todo"),
 #     "reorder_todo",
@@ -164,20 +209,6 @@ delete_todo = tool(
 #     "destination": (
 #         "number",
 #         "The new index for the todo.")})
-
-
-def read_todo_glue(db, index):
-    todos = db.select_list(db.selected_list)
-    return todos.read_todo(index)[1]
-
-
-read_todo = tool(
-    lambda db, x: print("read todo", x),
-    "read_todo",
-    "Return the contents of the todo at the given index in the selected list. Indices start at 1.",
-    {"todo": (
-        "number",
-        "The index of the todo to return.")})
 
 
 do_not_understand = tool(
@@ -228,12 +259,12 @@ def get_next(gen):
 
 async def event_generator(db, q, initial=None):
     client = anthropic.Anthropic()
-    initial_message = "You are a natural language interface interpreter for a todo app.\n\nLists:\n"
+    initial_message = "You are a natural language interface interpreter for a todo app. User input has been translated through speech to text so interpret the request assuming minor transcription errors.\n\nLists:\n"
     lists = db.list_lists()
     for i, item in enumerate(lists):
         initial_message += f"{i}. {item[1]}\n"
 
-    todos = db.select_list(1)
+    todos = db.select_list(db.selected_list)
     initial_message += "\nSelected list: {todos.name}\n"
     all_todos = todos.read_all()
     for i, item in enumerate(all_todos):

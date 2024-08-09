@@ -8,7 +8,6 @@ import os
 class Lists(object):
     def __init__(self, sqlitepath):
         self.path = sqlitepath
-        self.selected_list = 1
         self.db = sqlite3.connect(sqlitepath)
         self.cursor = self.db.cursor()
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS lists
@@ -17,16 +16,36 @@ class Lists(object):
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS todos
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
                                todo TEXT NOT NULL,
+                               complete BOOLEAN NOT NULL CHECK (complete IN (0, 1)),
                                list_id INTEGER,
                                FOREIGN KEY(list_id) REFERENCES lists(id))''')
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS metadata
+                              (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               selected_list INTEGER NOT NULL)''')
         self.db.commit()
         self.cursor.execute("SELECT id FROM lists")
         results = self.cursor.fetchall()
         if not len(results):
             self.add_list("Default")
+        self.cursor.execute("SELECT id FROM metadata")
+        results = self.cursor.fetchall()
+        if not len(results):
+            self.cursor.execute(
+                "INSERT INTO metadata (selected_list) VALUES (1)")
+            self.db.commit()
+        self.cursor.execute("SELECT selected_list FROM metadata WHERE id = 1")
+        result = self.cursor.fetchone()
+        self.selected_list = result[0]
+        print("SELECTED LIST", self.selected_list)
 
     def add_list(self, name):
-        self.cursor.execute("INSERT INTO lists (name) VALUES (?)", (name,))
+        self.cursor.execute("INSERT INTO lists (name) VALUES (?)", (name, ))
+        self.cursor.execute("SELECT id FROM lists")
+        results = self.cursor.fetchall()
+        self.selected_list = len(results)
+        self.cursor.execute(
+            "UPDATE metadata SET selected_list = ? WHERE id = 1",
+            (self.selected_list, ))
         self.db.commit()
         return self.cursor.lastrowid
 
@@ -45,6 +64,10 @@ class Lists(object):
         self.cursor.execute("SELECT id, name FROM lists LIMIT ?", (index, ))
         results = self.cursor.fetchall()
         self.selected_list = results[-1][0]
+        self.cursor.execute(
+            "UPDATE metadata SET selected_list = ? WHERE id = 1",
+            (self.selected_list, ))
+        self.db.commit()
         return Todos(self.db, self.selected_list, results[-1][1])
 
 
@@ -57,14 +80,14 @@ class Todos(object):
 
     def add_todo(self, todo):
         self.cursor.execute(
-            "INSERT INTO todos (todo, list_id) VALUES (?, ?)",
+            "INSERT INTO todos (todo, list_id, complete) VALUES (?, ?, 0)",
             (todo, self.selected_list))
         self.db.commit()
         return self.cursor.lastrowid
 
     def del_todo(self, index):
         self.cursor.execute(
-            "SELECT id FROM todos WHERE list_id=? LIMIT ?",
+            "SELECT id FROM todos WHERE list_id=? AND complete=0 LIMIT ?",
             (self.selected_list, index))
         results = self.cursor.fetchall()
         if results:
@@ -79,7 +102,7 @@ class Todos(object):
 
     def read_todo(self, index):
         self.cursor.execute(
-            "SELECT id, todo FROM todos WHERE list_id=? LIMIT ?", 
+            "SELECT id, todo FROM todos WHERE list_id=? AND complete=0 LIMIT ?", 
             (self.selected_list, index))
         results = self.cursor.fetchall()
         if results:
@@ -88,9 +111,35 @@ class Todos(object):
 
     def read_all(self):
         self.cursor.execute(
-            "SELECT id, todo FROM todos WHERE list_id=?",
+            "SELECT id, todo FROM todos WHERE list_id=? AND complete=0",
             (self.selected_list,))
         return self.cursor.fetchall()
+
+    def read_complete(self):
+        self.cursor.execute(
+            "SELECT id, todo FROM todos WHERE list_id=? AND complete=1",
+            (self.selected_list, ))
+        return self.cursor.fetchall()
+
+    def mark_complete(self, index):
+        self.cursor.execute(
+            "SELECT id FROM todos WHERE list_id=? AND complete=0 LIMIT ?", 
+            (self.selected_list, index))
+        result = self.cursor.fetchall()
+        self.cursor.execute(
+            "UPDATE todos SET complete = 1 WHERE id=?",
+            (result[-1][0], ))
+        self.db.commit()
+
+    def mark_incomplete(self, index):
+        self.cursor.execute(
+            "SELECT id FROM todos WHERE list_id=? AND complete=1 LIMIT ?", 
+            (self.selected_list, index))
+        result = self.cursor.fetchall()
+        self.cursor.execute(
+            "UPDATE todos SET complete = 0 WHERE id=?",
+            (result[-1][0], ))
+        self.db.commit()
 
 
 class TestLists(unittest.TestCase):
