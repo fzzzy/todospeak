@@ -16,6 +16,8 @@ from fastapi.responses import (
 
 import uuid
 
+import todostore
+
 thread_pool = ThreadPoolExecutor()
 convs = {}
 
@@ -55,49 +57,96 @@ def tool(tool_func, name, desc, params={}):
     return result
 
 
+def add_list_glue(db, name):
+    db.add_list(name)
+    return "List added."
+
+
 add_list = tool(
-    lambda name: print("add", name),
+    add_list_glue,
     "add_list",
     "Add a new todo list with a given name. The new todo list is automatically selected after creation.",
     {"name": ("string", "The name of the new todo list.")})
 
 
+def delete_list_glue(db, index):
+    if db.del_list(index):
+        return "List deleted."
+    return "List not found."
+
+
 delete_list = tool(
-    lambda index: print("delete", index),
+    lambda db, index: print("delete", index),
     "delete_list",
     "Delete the todo list with the given index. Indices start at 1.",
     {"index": ("number", "The index of the todo list to delete. Indices start at 1.")})
 
 
+def list_lists_glue(db):
+    result = ""
+    for i, item in enumerate(db.list_lists()):
+        result += f"{i + 1}. {item[1]}\n"
+    return result
+
+
 list_lists = tool(
-    lambda: print("list lists"),
+    list_lists_glue,
     "list_lists",
     "List all the todo lists.")
 
 
+def select_list_glue(db, index):
+    todos = db.select_list(index)
+    result = f"List {todos.name} selected.\n\n"
+    result += read_list_glue(db)
+    return result
+
+
 select_list = tool(
-    lambda index: print("select", index),
+    select_list_glue,
     "select_list",
     "Select a todo list with a given name, such that commands affecting todo items apply to the selected list.",
     {"index": ("number", "The index of the todo list to select. Indices start at 1.")})
 
 
+def read_list_glue(db):
+    result = ""
+    todos = db.select_list(db.selected_list)
+    for i, item in enumerate(todos.read_all()):
+        result += f"{i + 1}. {item[1]}\n"
+    return result
+
+
 read_list = tool(
-    lambda: print("read list"),
+    read_list_glue,
     "read_list",
     "Return the contents of the selected todo list.",
     {})
-    
+
+
+def add_todo_glue(db, todo):
+    todos = db.select_list(db.selected_list)
+    todos.add_todo(todo)
+    return f"Added to {todos.name} list."
+
 
 add_todo = tool(
-    lambda todo: print("add todo", todo),
+    add_todo_glue,
     "add_todo",
     "Add a new todo item to the selected list.",
     {"todo": ("string", "The text of the todo.")})
 
 
+def delete_todo_glue(db, index):
+    todos = db.select_list(db.selected_list)
+    if todos.del_todo(index):
+        return "Deleted."
+    else:
+        return "Todo not found."
+
+
 delete_todo = tool(
-    lambda index: print("del todo", index),
+    delete_todo_glue,
     "delete_todo",
     "Delete the numbered todo item from the selected list. Indices start at 1.",
     {"index": (
@@ -105,8 +154,25 @@ delete_todo = tool(
         "The index of the todo to delete from the currently selected list.")})
 
 
+# reorder_todo = tool(
+#     lambda db, origin, destination: print("reorder todo"),
+#     "reorder_todo",
+#     "Reorder the numbered todo item from to the new list index. Indices start at 1.",
+#     {"origin": (
+#         "number",
+#         "The index of the todo to reorder."),
+#     "destination": (
+#         "number",
+#         "The new index for the todo.")})
+
+
+def read_todo_glue(db, index):
+    todos = db.select_list(db.selected_list)
+    return todos.read_todo(index)[1]
+
+
 read_todo = tool(
-    lambda x: print("read todo", x),
+    lambda db, x: print("read todo", x),
     "read_todo",
     "Return the contents of the todo at the given index in the selected list. Indices start at 1.",
     {"todo": (
@@ -115,7 +181,7 @@ read_todo = tool(
 
 
 do_not_understand = tool(
-    lambda x: print("I don't understand", x),
+    lambda _db, error: f"I don't understand. {error}",
     "do_not_understand",
     "If the user input does not seem to apply to any of the other tools, this tool must be used by default. The error parameter can be used to ask the user for clarification on their input.",
     {"error": (
@@ -123,7 +189,7 @@ do_not_understand = tool(
         "The message to show to the user asking for clarification on their request.")})
 
 
-print(ALL_TOOLS_LIST)
+# print(ALL_TOOLS_LIST)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -160,9 +226,20 @@ def get_next(gen):
         return None
 
 
-async def event_generator(q, initial=None):
+async def event_generator(db, q, initial=None):
     client = anthropic.Anthropic()
+    initial_message = "You are a natural language interface interpreter for a todo app.\n\nLists:\n"
+    lists = db.list_lists()
+    for i, item in enumerate(lists):
+        initial_message += f"{i}. {item[1]}\n"
+
+    todos = db.select_list(1)
+    initial_message += "\nSelected list: {todos.name}\n"
+    all_todos = todos.read_all()
+    for i, item in enumerate(all_todos):
+        initial_message += f"{i + 1}. {item[1]}\n"
     history = []
+
     if initial is not None:
         jsondata = json.dumps(initial)
         yield f"data: {jsondata}\n\n"
@@ -187,6 +264,7 @@ async def event_generator(q, initial=None):
                 max_tokens=1024,
                 tools=ALL_TOOLS_LIST,
                 tool_choice={"type": "any"},
+                system=initial_message,
                 messages=history))
 
         assistant_content = []
@@ -205,7 +283,7 @@ async def event_generator(q, initial=None):
                     "name": tool_name,
                     "input": tool_input,
                 })
-                tool_output = ALL_TOOLS[tool_name]["tool"](**tool_input)
+                tool_output = ALL_TOOLS[tool_name]["tool"](db, **tool_input)
                 history.append({
                     "role": "assistant",
                     "content": assistant_content})
@@ -220,10 +298,10 @@ async def event_generator(q, initial=None):
                         }
                     ]
                 })
-                print(result)
+                print("GOT RESULT", result)
                 print("TOOL OUTPUT", tool_output)
                 jsondata = json.dumps({
-                    "content": f"using tool {tool_name}: {tool_output}"
+                    "content": tool_output
                 })
                 yield f"data: {jsondata}\n\n"
                 yield 'data: {"finish_reason": "stop"}\n\n'
@@ -237,13 +315,14 @@ async def event_generator(q, initial=None):
 async def conversation():
     conv_id = str(uuid.uuid4())
     queue = asyncio.Queue()
+    db = todostore.Lists("todostore.db")
     # await queue.put({
     #     "role": "user",
     #     "content": "Hello"
     # })
     convs[conv_id] = queue
     return StreamingResponse(
-        event_generator(queue, initial={"id": conv_id}),
+        event_generator(db, queue, initial={"id": conv_id}),
         media_type="text/event-stream"
     )
 

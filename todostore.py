@@ -1,15 +1,14 @@
+
+
 import unittest
 import sqlite3
 import os
 
 
-import sqlite3
-
-
 class Lists(object):
     def __init__(self, sqlitepath):
         self.path = sqlitepath
-        self.selected_list = None
+        self.selected_list = 1
         self.db = sqlite3.connect(sqlitepath)
         self.cursor = self.db.cursor()
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS lists
@@ -21,6 +20,10 @@ class Lists(object):
                                list_id INTEGER,
                                FOREIGN KEY(list_id) REFERENCES lists(id))''')
         self.db.commit()
+        self.cursor.execute("SELECT id FROM lists")
+        results = self.cursor.fetchall()
+        if not len(results):
+            self.add_list("Default")
 
     def add_list(self, name):
         self.cursor.execute("INSERT INTO lists (name) VALUES (?)", (name,))
@@ -42,14 +45,15 @@ class Lists(object):
         self.cursor.execute("SELECT id, name FROM lists LIMIT ?", (index, ))
         results = self.cursor.fetchall()
         self.selected_list = results[-1][0]
-        return Todos(self.db, self.selected_list)
+        return Todos(self.db, self.selected_list, results[-1][1])
 
 
 class Todos(object):
-    def __init__(self, db, selected_list):
+    def __init__(self, db, selected_list, name):
         self.db = db
         self.cursor = self.db.cursor()
         self.selected_list = selected_list
+        self.name = name
 
     def add_todo(self, todo):
         self.cursor.execute(
@@ -68,7 +72,9 @@ class Todos(object):
                 "DELETE FROM todos WHERE id=?",
                 (results[-1][0],))
             self.db.commit()
-            return self.cursor.rowcount > 0
+            if self.cursor.rowcount > 0:
+                self.selected_list = 1
+                return True
         return False
 
     def read_todo(self, index):

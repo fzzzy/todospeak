@@ -12,8 +12,10 @@ const playbackQueue = [];
 mute.addEventListener('click', function () {
     if (mute.textContent === "🔈") {
         mute.textContent = "🔇";
+        mute.title = "Enable text to speech."
     } else {
         mute.textContent = "🔈";
+        mute.title = "Disable text to speech."
     }
 });
 
@@ -48,6 +50,7 @@ function start_recognition() {
         recognition.stop();
         recordButton.textContent = "🎙️";
         recordButton.setAttribute("aria-label", "record");
+        recordButton.title = "Enable speech recognition.";
         recognizing = false;
         return;
     }
@@ -55,6 +58,7 @@ function start_recognition() {
     recognition.start();
     recordButton.textContent = "🛑";
     recordButton.setAttribute("aria-label", "stop");
+    recordButton.title = "Disable speech recognition.";
     recognizing = true;
 }
 
@@ -113,23 +117,14 @@ async function postConversation() {
                 document.body.appendChild(eventDataDiv);
             } else {
                 unspoken += result.content;
-                let match = unspoken.match(punctuationRegex);
-
-                while (match) {
-                    const sentenceEndIndex = unspoken.indexOf(match[0]) + 1;
-                    const speaking = unspoken.slice(0, sentenceEndIndex);
-                    unspoken = unspoken.slice(sentenceEndIndex);
-                    if (mute.textContent === "🔈") {
-                        if ('speechSynthesis' in window) {
-                            const utterance = new SpeechSynthesisUtterance();
-                            utterance.text = speaking;
-                            window.speechSynthesis.speak(utterance);
-                        } else {
-                            //
-                        }
-        
+                if (mute.textContent === "🔈") {
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance();
+                        utterance.text = result.content;
+                        window.speechSynthesis.speak(utterance);
+                    } else {
+                        //
                     }
-                    match = unspoken.match(punctuationRegex);
                 }
 
                 eventDataDiv.dataset.content += result.content;
