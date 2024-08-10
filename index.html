@@ -1,20 +1,58 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>speake</title>
-        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
-        </script>
-        <link rel="stylesheet" href="index.css">
-    </head>
-    <body>
-        <form id="chat" method="post" action="/chat/">
-            <textarea id="inputText" name="text"></textarea>
-            <button type="submit">Send</button>
-        </form>
-        <button id="record" title="Enable speech recognition" aria-label="record">🎙️</button>
-        <button id="mute" title="Disable text to speech" aria-label="mute">🔈</button>
-        <div id="event-data"></div>
-        <script src="index.js">
-        </script>
-    </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>todospeak</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 3rem;
+        }
+        input {
+            margin-bottom: 2rem;
+            padding: 0.5rem;
+            width: 200px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <form class="container" method="POST" action="/account">
+        <h1>todospeak</h1>
+        <input type="text" placeholder="Name" name="name">
+        <button>Create Account</button>
+    </form>
+</body>
 </html>

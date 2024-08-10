@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>todospeak</title>
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
+        </script>
+        <link rel="stylesheet" href="/index.css">
+    </head>
+    <body>
+        <form id="chat" method="post" action="/chat/">
+            <textarea id="inputText" name="text"></textarea>
+            <button type="submit">Send</button>
+        </form>
+        <button id="record" title="Enable speech recognition" aria-label="record">🎙️</button>
+        <button id="mute" title="Disable text to speech" aria-label="mute">🔈</button>
+        <div id="event-data"></div>
+        <script src="/index.js">
+        </script>
+    </body>
+</html>

@@ -97,7 +97,7 @@ chat.onsubmit = (event) => {
 
 
 async function postConversation() {
-    const eventSource = new EventSource("/conversation");
+    const eventSource = new EventSource("conversation");
     let eventDataDiv = document.getElementById("event-data");
     let firstMessage = true;
     let unspoken = "";

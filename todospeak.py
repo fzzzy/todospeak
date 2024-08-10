@@ -4,18 +4,19 @@ import anthropic
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import json
-import functools
 
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
+    RedirectResponse,
     Response,
     StreamingResponse
 )
 
 import uuid
 
+import todoaccounts
 import todostore
 
 thread_pool = ThreadPoolExecutor()
@@ -250,6 +251,23 @@ async def serve_js():
     return Response(content=content, media_type="application/javascript")
 
 
+@app.post("/account")
+async def create_account(name: str = Form(...)):
+    a = todoaccounts.Accounts()
+    user_id = str(uuid.uuid4())
+    if a.add_account(name, user_id):
+        print(f"Account created for: {name} {uuid}")
+    return RedirectResponse(url=f"/account/{user_id}/", status_code=303)
+
+
+@app.get("/account/{account_id}/")
+async def render_account(account_id: str):
+    return HTMLResponse(
+        content=open("account.html").read(),
+        status_code=200
+    )
+
+
 def get_next(gen):
     try:
         return gen.__next__()
@@ -257,25 +275,47 @@ def get_next(gen):
         return None
 
 
-async def event_generator(db, q, initial=None):
+async def event_generator(db, q, account, initial=None):
+    loop = asyncio.get_running_loop()
     client = anthropic.Anthropic()
     initial_message = "You are a natural language interface interpreter for a todo app. User input has been translated through speech to text so interpret the request assuming minor transcription errors.\n\nLists:\n"
+    todo_lists = ""
+    selected_list = ""
     lists = db.list_lists()
     for i, item in enumerate(lists):
-        initial_message += f"{i}. {item[1]}\n"
+        todo_lists += f"{i + 1}. {item[1]}\n"
+    initial_message += todo_lists
 
     todos = db.select_list(db.selected_list)
-    initial_message += "\nSelected list: {todos.name}\n"
+    selected_list += f"\nSelected list: {todos.name}\n"
     all_todos = todos.read_all()
     for i, item in enumerate(all_todos):
-        initial_message += f"{i + 1}. {item[1]}\n"
+        selected_list += f"{i + 1}. {item[1]}\n"
+    initial_message += selected_list
+
     history = []
 
     if initial is not None:
         jsondata = json.dumps(initial)
         yield f"data: {jsondata}\n\n"
         yield 'data: {"finish_reason": "stop"}\n\n'
-    loop = asyncio.get_running_loop()
+
+    jsondata = json.dumps({
+        "content":
+        f"""Welcome, {account['name']}.
+        
+Please save this url somewhere safe and use it to access your todos in the future.
+
+Do not share the url.
+
+Your lists:
+{todo_lists}
+{selected_list}
+"""})
+    print("welcome!", jsondata)
+    yield f"data: {jsondata}\n\n"
+    yield 'data: {"finish_reason": "stop"}\n\n'
+
     while True:
         chat = await q.get()
         print("GOT CHAT", chat)
@@ -342,8 +382,8 @@ async def event_generator(db, q, initial=None):
         yield 'data: {"finish_reason": "stop"}\n\n'
 
 
-@app.get("/conversation")
-async def conversation():
+@app.get("/account/{account_id}/conversation")
+async def conversation(account_id: str):
     conv_id = str(uuid.uuid4())
     queue = asyncio.Queue()
     db = todostore.Lists("todostore.db")
@@ -351,9 +391,11 @@ async def conversation():
     #     "role": "user",
     #     "content": "Hello"
     # })
+    a = todoaccounts.Accounts()
+    account = a.get_account(account_id)
     convs[conv_id] = queue
     return StreamingResponse(
-        event_generator(db, queue, initial={"id": conv_id}),
+        event_generator(db, queue, account, initial={"id": conv_id}),
         media_type="text/event-stream"
     )
 
