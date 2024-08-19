@@ -36,9 +36,23 @@ recognition.onend = function () {
     console.log("Voice recognition ended.");
 };
 
+
+
+
+let timerId = null;
+
 recognition.onresult = function (event) {
-    const result = event.results[0][0].transcript;
+    const result = event.results[event.resultIndex][0].transcript;
     inputText.value = result;
+
+    if (timerId) {
+        clearTimeout(timerId);
+    }
+
+    timerId = setTimeout(() => {
+        timerId = null;
+        submitChat();
+    }, 1500);
 };
 
 
@@ -115,6 +129,8 @@ async function postConversation() {
                 eventDataDiv.id = "event-data";
                 eventDataDiv.dataset.content = "";
                 document.body.appendChild(eventDataDiv);
+                eventDataDiv.scrollIntoView();
+                inputText.focus();
             } else {
                 unspoken += result.content;
                 if (mute.textContent === "🔈") {

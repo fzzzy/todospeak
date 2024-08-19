@@ -77,7 +77,7 @@ def delete_list_glue(db, index):
 
 
 delete_list = tool(
-    lambda db, index: print("delete", index),
+    delete_list_glue,
     "delete_list",
     "Delete the todo list with the given index. Indices start at 1.",
     {"index": ("number", "The index of the todo list to delete. Indices start at 1.")})
