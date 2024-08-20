@@ -1,26 +1,31 @@
 
-
+const main = document.getElementById("main");
 const chat = document.getElementById("chat");
 const inputText = document.getElementById("inputText");
 const recordButton = document.getElementById('record');
 const mute = document.getElementById('mute');
 const punctuationRegex = /[.?!]/;
 const playbackQueue = [];
-
+const recognition = new window.webkitSpeechRecognition();
+let timerId = null;
+let muted = false;
+let recognizing = false;
+let utterance = null;
 
 
 mute.addEventListener('click', function () {
-    if (mute.textContent === "🔈") {
-        mute.textContent = "🔇";
-        mute.title = "Enable text to speech."
+    if (muted) {
+        mute.textContent = "🔇 Enable text to speech";
+        mute.title = "Enable text to speech.";
+        muted = false;
     } else {
-        mute.textContent = "🔈";
-        mute.title = "Disable text to speech."
+        mute.textContent = "🔈 Disable text to speech";
+        mute.title = "Disable text to speech.";
+        muted = true;
     }
 });
 
 
-const recognition = new window.webkitSpeechRecognition();
 recognition.continuous = true;
 recognition.interimResults = true;
 
@@ -39,8 +44,6 @@ recognition.onend = function () {
 
 
 
-let timerId = null;
-
 recognition.onresult = function (event) {
     const result = event.results[event.resultIndex][0].transcript;
     inputText.value = result;
@@ -48,7 +51,10 @@ recognition.onresult = function (event) {
     if (timerId) {
         clearTimeout(timerId);
     }
-
+    if (utterance !== null) {
+        window.speechSynthesis.cancel();
+        utterance = null;
+    }
     timerId = setTimeout(() => {
         timerId = null;
         submitChat();
@@ -56,13 +62,10 @@ recognition.onresult = function (event) {
 };
 
 
-let recognizing = false;
-
-
 function start_recognition() {
     if (recognizing) {
         recognition.stop();
-        recordButton.textContent = "🎙️";
+        recordButton.textContent = "👂 Enable speech recognition";
         recordButton.setAttribute("aria-label", "record");
         recordButton.title = "Enable speech recognition.";
         recognizing = false;
@@ -70,7 +73,7 @@ function start_recognition() {
     }
 
     recognition.start();
-    recordButton.textContent = "🛑";
+    recordButton.textContent = "🛑 Disable speech recognition";
     recordButton.setAttribute("aria-label", "stop");
     recordButton.title = "Disable speech recognition.";
     recognizing = true;
@@ -87,7 +90,7 @@ async function submitChat() {
     let userChatDiv = document.createElement("div");
     userChatDiv.className = "user-chat";
     userChatDiv.textContent = chat.text.value;
-    document.body.insertBefore(userChatDiv, document.body.lastElementChild);
+    main.insertBefore(userChatDiv, main.lastElementChild);
 
     const response = await fetch(chat.action, {
         method: "POST",
@@ -128,16 +131,20 @@ async function postConversation() {
                 eventDataDiv = document.createElement("div");
                 eventDataDiv.id = "event-data";
                 eventDataDiv.dataset.content = "";
-                document.body.appendChild(eventDataDiv);
+                main.appendChild(eventDataDiv);
                 eventDataDiv.scrollIntoView();
                 inputText.focus();
             } else {
                 unspoken += result.content;
-                if (mute.textContent === "🔈") {
+                if (!muted) {
                     if ('speechSynthesis' in window) {
-                        const utterance = new SpeechSynthesisUtterance();
+                        utterance = new SpeechSynthesisUtterance();
                         utterance.text = result.content;
                         window.speechSynthesis.speak(utterance);
+
+                        utterance.onend = function () {
+                            utterance = null;
+                        };
                     } else {
                         //
                     }

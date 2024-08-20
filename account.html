@@ -1,22 +1,55 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>todospeak</title>
-        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
-        </script>
-        <link rel="stylesheet" href="/index.css">
-    </head>
-    <body>
+
+<head>
+    <title>todospeak</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
+    </script>
+    <link rel="stylesheet" href="/index.css">
+</head>
+
+<body>
+    <header>
+        <span>todospeak</span>
+        <span>
+            <button id="record" title="Enable speech recognition" aria-label="record">👂 Enable speech recognition</button>
+            <button id="mute" title="Disable text to speech" aria-label="mute">🔈 Disable text to speech</button>
+            <button id="help">Open Help</button>
+        </span>
+    </header>
+    <main id="main">
+        <div id="event-data"></div>
+    </main>
+    <footer>
         <form id="chat" method="post" action="/chat/">
             <textarea id="inputText" name="text"></textarea>
 
             <button id="generate" type="submit">➡️</button>
 
         </form>
-        <button id="record" title="Enable speech recognition" aria-label="record">🎙️</button>
-        <button id="mute" title="Disable text to speech" aria-label="mute">🔈</button>
-        <div id="event-data"></div>
-        <script src="/index.js">
-        </script>
-    </body>
+    </footer>
+
+    <dialog id="helpDialog">
+        <button id="closeDialog">Close</button>
+
+
+        <h2>Things You Can Say</h2>
+        <p>Add a list called work</p>
+        <p>List lists</p>
+        <p>Switch to the default list</p>
+        <p>Remove work list</p>
+        <p>Add a task called buy milk</p>
+        <p>Add buy bread</p>
+        <p>Mark buy milk complete</p>
+        <p>Delete buy bread</p>
+        <p>List tasks</p>
+        <p>Show completed tasks</p>
+
+    </dialog>
+    <script src="/index.js">
+    </script>
+    <script src="/help.js">
+    </script>
+</body>
+
 </html>

@@ -251,6 +251,13 @@ async def serve_js():
     return Response(content=content, media_type="application/javascript")
 
 
+@app.get("/help.js")
+async def serve_help():
+    with open("help.js", "r") as file:
+        content = file.read()
+    return Response(content=content, media_type="application/javascript")
+
+
 @app.post("/account")
 async def create_account(name: str = Form(...)):
     a = todoaccounts.Accounts()
