@@ -66,12 +66,13 @@ class Lists(object):
     def select_list(self, index):
         self.cursor.execute("SELECT id, name FROM lists LIMIT ?", (index, ))
         results = self.cursor.fetchall()
-        self.selected_list = results[-1][0]
+        self.selected_list = index
+        self.selected_list_id = results[-1][0]
         self.cursor.execute(
             "UPDATE metadata SET selected_list = ? WHERE id = 1",
-            (self.selected_list, ))
+            (self.selected_list_id, ))
         self.db.commit()
-        return Todos(self.db, self.selected_list, results[-1][1])
+        return Todos(self.db, self.selected_list_id, results[-1][1])
 
 
 class Todos(object):

@@ -1,11 +1,12 @@
 
+
 import anthropic
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import json
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -393,7 +394,7 @@ Your lists:
 async def conversation(account_id: str):
     conv_id = str(uuid.uuid4())
     queue = asyncio.Queue()
-    db = todostore.Lists("todostore.db")
+    db = todostore.Lists(f"db/{account_id}.db")
     # await queue.put({
     #     "role": "user",
     #     "content": "Hello"
