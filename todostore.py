@@ -38,7 +38,17 @@ class Lists(object):
             self.db.commit()
         self.cursor.execute("SELECT selected_list FROM metadata WHERE id = 1")
         result = self.cursor.fetchone()
-        self.selected_list = result[0]
+        self.selected_list_id = result[0]
+        self.cursor.execute(
+            "SELECT id FROM lists")
+        result = self.cursor.fetchall()
+        for (i, (li, )) in enumerate(result):
+            print("sli", repr(self.selected_list_id), i, repr(li))
+            if li == self.selected_list_id:
+                self.selected_list = i + 1
+                break
+        else:
+            self.selected_list = 1
         print("SELECTED LIST", self.selected_list)
 
     def add_list(self, name):

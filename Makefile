@@ -1,5 +1,5 @@
 
-
+SHELL := /bin/zsh
 
 all:
 	source venv/bin/activate && uvicorn todospeak:app --reload

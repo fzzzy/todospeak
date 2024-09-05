@@ -1,0 +1,4 @@
+#!/usr/bin/zsh
+
+journalctl -u todospeak --no-pager
+
