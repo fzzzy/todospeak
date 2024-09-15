@@ -135,11 +135,15 @@ async function postConversation() {
                 eventDataDiv.scrollIntoView();
                 inputText.focus();
             } else {
-                unspoken += result.content;
+                if (result.content.title) {
+                    document.title = result.content.title;
+                    //console.log(result.content.title);
+                }
+                unspoken += result.content.text;
                 if (!muted) {
                     if ('speechSynthesis' in window) {
                         utterance = new SpeechSynthesisUtterance();
-                        utterance.text = result.content;
+                        utterance.text = result.content.text;
                         window.speechSynthesis.speak(utterance);
 
                         utterance.onend = function () {
@@ -150,7 +154,7 @@ async function postConversation() {
                     }
                 }
 
-                eventDataDiv.dataset.content += result.content;
+                eventDataDiv.dataset.content += result.content.text;
                 eventDataDiv.innerHTML = marked.parse(
                     eventDataDiv.dataset.content
                 );

@@ -58,11 +58,9 @@ def tool(tool_func, name, desc, params={}):
     ALL_TOOLS_LIST.append(result['spec'])
     return result
 
-
 def add_list_glue(db, name):
     db.add_list(name)
-    return "List added. Lists:\n\n" + list_lists_glue(db)
-
+    return {"text": f"List added. Lists:\n\n{list_lists_glue(db)['text']}\nSelected list: {name}\n"}
 
 add_list = tool(
     add_list_glue,
@@ -70,12 +68,10 @@ add_list = tool(
     "Add a new todo list with a given name. The new todo list is automatically selected after creation.",
     {"name": ("string", "The name of the new todo list.")})
 
-
 def delete_list_glue(db, index):
     if db.del_list(index):
-        return "List deleted."
-    return "List not found."
-
+        return {"text": "List deleted."}
+    return {"text": "List not found."}
 
 delete_list = tool(
     delete_list_glue,
@@ -83,26 +79,22 @@ delete_list = tool(
     "Delete the todo list with the given index. Indices start at 1.",
     {"index": ("number", "The index of the todo list to delete. Indices start at 1.")})
 
-
 def list_lists_glue(db):
     result = ""
     for i, item in enumerate(db.list_lists()):
         result += f"{i + 1}. {item[1]}\n"
-    return result
-
+    return {"text": result}
 
 list_lists = tool(
     list_lists_glue,
     "list_lists",
     "List all the todo lists.")
 
-
 def select_list_glue(db, index):
     todos = db.select_list(index)
     result = f"List {todos.name} selected.\n\n"
-    result += read_list_glue(db)
-    return result
-
+    result += read_list_glue(db)["text"]
+    return {"text": result}
 
 select_list = tool(
     select_list_glue,
@@ -110,14 +102,12 @@ select_list = tool(
     "Select a todo list with a given name, such that commands affecting todo items apply to the selected list.",
     {"index": ("number", "The index of the todo list to select. Indices start at 1.")})
 
-
 def read_list_glue(db):
     result = ""
     todos = db.select_list(db.selected_list)
     for i, item in enumerate(todos.read_all()):
         result += f"{i + 1}. {item[1]}\n"
-    return result
-
+    return {"text": result}
 
 read_list = tool(
     read_list_glue,
@@ -125,14 +115,12 @@ read_list = tool(
     "Return the contents of the selected todo list.",
     {})
 
-
 def read_complete_glue(db):
     result = ""
     todos = db.select_list(db.selected_list)
     for i, item in enumerate(todos.read_complete()):
         result += f"{i + 1}. {item[1]}\n"
-    return result
-
+    return {"text": result}
 
 read_complete = tool(
     read_complete_glue,
@@ -140,12 +128,10 @@ read_complete = tool(
     "Return the completed items of the selected todo list.",
     {})
 
-
 def add_todo_glue(db, todo):
     todos = db.select_list(db.selected_list)
     todos.add_todo(todo)
-    return f"Added to {todos.name} list."
-
+    return {"text": f"Added to {todos.name} list."}
 
 add_todo = tool(
     add_todo_glue,
@@ -153,14 +139,12 @@ add_todo = tool(
     "Add a new todo item to the selected list.",
     {"todo": ("string", "The text of the todo.")})
 
-
 def delete_todo_glue(db, index):
     todos = db.select_list(db.selected_list)
     if todos.del_todo(index):
-        return "Deleted."
+        return {"text": "Deleted."}
     else:
-        return "Todo not found."
-
+        return {"text": "Todo not found."}
 
 delete_todo = tool(
     delete_todo_glue,
@@ -170,12 +154,10 @@ delete_todo = tool(
         "number",
         "The index of the todo to delete from the currently selected list.")})
 
-
 def mark_complete_glue(db, index):
     todos = db.select_list(db.selected_list)
     todos.mark_complete(index)
-    return "Marked complete. Completed items:\n\n" + read_complete_glue(db)
-
+    return {"text": f"Marked complete. Completed items:\n\n{read_complete_glue(db)['text']}"}
 
 mark_complete = tool(
     mark_complete_glue,
@@ -185,12 +167,10 @@ mark_complete = tool(
         "number",
         "The index of the todo to mark as complete from the currently selected list.")})
 
-
 def mark_incomplete_glue(db, index):
     todos = db.select_list(db.selected_list)
     todos.mark_incomplete(index)
-    return "Marked incomplete. Incomplete items:\n\n" + read_list_glue(db)
-
+    return {"text": f"Marked incomplete. Incomplete items:\n\n{read_list_glue(db)['text']}"}
 
 mark_incomplete = tool(
     mark_incomplete_glue,
@@ -200,28 +180,13 @@ mark_incomplete = tool(
         "number",
         "The index of the todo to mark as incomplete from the currently selected list.")})
 
-
-# reorder_todo = tool(
-#     lambda db, origin, destination: print("reorder todo"),
-#     "reorder_todo",
-#     "Reorder the numbered todo item from to the new list index. Indices start at 1.",
-#     {"origin": (
-#         "number",
-#         "The index of the todo to reorder."),
-#     "destination": (
-#         "number",
-#         "The new index for the todo.")})
-
-
 do_not_understand = tool(
-    lambda _db, error: f"I don't understand. {error}",
+    lambda _db, error: {"text": f"I don't understand. {error}"},
     "do_not_understand",
     "If the user input does not seem to apply to any of the other tools, this tool must be used by default. The error parameter can be used to ask the user for clarification on their input.",
     {"error": (
         "string",
         "The message to show to the user asking for clarification on their request.")})
-
-
 # print(ALL_TOOLS_LIST)
 
 
@@ -309,8 +274,7 @@ async def event_generator(db, q, account, initial=None):
         yield 'data: {"finish_reason": "stop"}\n\n'
 
     jsondata = json.dumps({
-        "content":
-        f"""Welcome, {account['name']}.
+        "content": {"title": account['name'], "text": f"""Welcome, {account['name']}.
         
 Please save this url somewhere safe and use it to access your todos in the future.
 
@@ -319,7 +283,7 @@ Do not share the url.
 Your lists:
 {todo_lists}
 {selected_list}
-"""})
+"""}})
     print("welcome!", jsondata)
     yield f"data: {jsondata}\n\n"
     yield 'data: {"finish_reason": "stop"}\n\n'
@@ -350,7 +314,7 @@ Your lists:
         for x in result.content:
             if x.type == "text":
                 assistant_content.append({"type": "text", "text": x.text})
-                jsondata = json.dumps({"content": x.text})
+                jsondata = json.dumps({"content": {"text": x.text}})
                 yield f"data: {jsondata}\n\n"
             elif x.type == "tool_use":
                 tool_id = x.id
@@ -373,7 +337,7 @@ Your lists:
                         {
                             "type": "tool_result",
                             "tool_use_id": tool_id,
-                            "content": str(tool_output)
+                            "content": tool_output["text"]
                         }
                     ]
                 })

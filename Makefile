@@ -2,7 +2,7 @@
 SHELL := /bin/zsh
 
 all:
-	source venv/bin/activate && uvicorn todospeak:app --reload
+	source venv/bin/activate && uvicorn todospeak:app --reload --host 0.0.0.0
 
 
 

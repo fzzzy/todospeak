@@ -13,17 +13,23 @@ class Lists(object):
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS lists
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
                                name TEXT NOT NULL,
-                               created_at DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+                               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               last_modified DATETIME DEFAULT CURRENT_TIMESTAMP
+                            )''')
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS todos
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
                                todo TEXT NOT NULL,
                                complete BOOLEAN NOT NULL CHECK (complete IN (0, 1)),
                                list_id INTEGER,
                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               last_modified DATETIME DEFAULT CURRENT_TIMESTAMP,
                                completed_at DATETIME DEFAULT NULL,
                                FOREIGN KEY(list_id) REFERENCES lists(id))''')
+
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS metadata
                               (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               last_modified DATETIME DEFAULT CURRENT_TIMESTAMP,
                                selected_list INTEGER NOT NULL)''')
         self.db.commit()
         self.cursor.execute("SELECT id FROM lists")
@@ -57,7 +63,7 @@ class Lists(object):
         results = self.cursor.fetchall()
         self.selected_list = len(results)
         self.cursor.execute(
-            "UPDATE metadata SET selected_list = ? WHERE id = 1",
+            "UPDATE metadata SET selected_list = ?, last_modified = CURRENT_TIMESTAMP WHERE id = 1",
             (self.selected_list, ))
         self.db.commit()
         return self.cursor.lastrowid
@@ -79,7 +85,7 @@ class Lists(object):
         self.selected_list = index
         self.selected_list_id = results[-1][0]
         self.cursor.execute(
-            "UPDATE metadata SET selected_list = ? WHERE id = 1",
+            "UPDATE metadata SET selected_list = ?, last_modified = CURRENT_TIMESTAMP WHERE id = 1",
             (self.selected_list_id, ))
         self.db.commit()
         return Todos(self.db, self.selected_list_id, results[-1][1])
@@ -96,6 +102,9 @@ class Todos(object):
         self.cursor.execute(
             "INSERT INTO todos (todo, list_id, complete) VALUES (?, ?, 0)",
             (todo, self.selected_list))
+        self.cursor.execute(
+            "UPDATE lists SET last_modified = CURRENT_TIMESTAMP WHERE id = ?",
+            (self.selected_list, ))
         self.db.commit()
         return self.cursor.lastrowid
 
@@ -108,6 +117,9 @@ class Todos(object):
             self.cursor.execute(
                 "DELETE FROM todos WHERE id=?",
                 (results[-1][0],))
+            self.cursor.execute(
+                "UPDATE lists SET last_modified = CURRENT_TIMESTAMP WHERE id = ?",
+                (self.selected_list, ))
             self.db.commit()
             if self.cursor.rowcount > 0:
                 self.selected_list = 1
@@ -141,8 +153,11 @@ class Todos(object):
             (self.selected_list, index))
         result = self.cursor.fetchall()
         self.cursor.execute(
-            "UPDATE todos SET complete = 1, completed_at = CURRENT_TIMESTAMP WHERE id=?",
+            "UPDATE todos SET complete = 1, completed_at = CURRENT_TIMESTAMP, last_modified = CURRENT_TIMESTAMP WHERE id=?",
             (result[-1][0], ))
+        self.cursor.execute(
+            "UPDATE lists SET last_modified = CURRENT_TIMESTAMP WHERE id = ?",
+            (self.selected_list, ))
         self.db.commit()
 
     def mark_incomplete(self, index):
@@ -151,8 +166,11 @@ class Todos(object):
             (self.selected_list, index))
         result = self.cursor.fetchall()
         self.cursor.execute(
-            "UPDATE todos SET complete = 0, completed_at = NULL WHERE id=?",
+            "UPDATE todos SET complete = 0, completed_at = NULL, last_modified = CURRENT_TIMESTAMP WHERE id=?",
             (result[-1][0], ))
+        self.cursor.execute(
+            "UPDATE lists SET last_modified = CURRENT_TIMESTAMP WHERE id = ?",
+            (self.selected_list, ))
         self.db.commit()
 
 
