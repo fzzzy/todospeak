@@ -203,16 +203,16 @@ async def favicon():
     return FileResponse("favicon.ico")
 
 
-@app.get("/index.css")
+@app.get("/account.css")
 async def serve_css():
-    with open("index.css", "r") as file:
+    with open("account.css", "r") as file:
         content = file.read()
     return Response(content=content, media_type="text/css")
 
 
-@app.get("/index.js")
+@app.get("/account.js")
 async def serve_js():
-    with open("index.js", "r") as file:
+    with open("account.js", "r") as file:
         content = file.read()
     return Response(content=content, media_type="application/javascript")
 
