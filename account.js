@@ -6,7 +6,7 @@ const recordButton = document.getElementById('record');
 const mute = document.getElementById('mute');
 const punctuationRegex = /[.?!]/;
 const playbackQueue = [];
-const recognition = new window.webkitSpeechRecognition();
+let recognition = null;
 let timerId = null;
 let muted = false;
 let recognizing = false;
@@ -26,40 +26,38 @@ mute.addEventListener('click', function () {
 });
 
 
-recognition.continuous = true;
-recognition.interimResults = true;
+function create_recognition() {
+  recognition = new window.webkitSpeechRecognition();
+  recognition.interimResults = true;
 
-recognition.onstart = function () {
-    console.log("Voice recognition started.");
-};
+  recognition.onstart = function () {
+      console.log("Voice recognition started.");
+  };
 
-recognition.onerror = function (event) {
-    console.log("Error occurred: " + event.error);
-};
+  recognition.onerror = function (event) {
+      console.log("Error occurred: " + event.error);
+  };
 
-recognition.onend = function () {
-    console.log("Voice recognition ended.");
-};
+  recognition.onend = function () {
+      console.log("Voice recognition ended.");
+  };
 
+  recognition.onresult = function (event) {
+      const result = event.results[event.resultIndex][0].transcript;
+      inputText.value = result;
 
+      if (utterance !== null) {
+          window.speechSynthesis.cancel();
+          utterance = null;
+      }
+  };
 
-
-recognition.onresult = function (event) {
-    const result = event.results[event.resultIndex][0].transcript;
-    inputText.value = result;
-
-    if (timerId) {
-        clearTimeout(timerId);
-    }
-    if (utterance !== null) {
-        window.speechSynthesis.cancel();
-        utterance = null;
-    }
-    timerId = setTimeout(() => {
-        timerId = null;
-        submitChat();
-    }, 1500);
-};
+  recognition.onspeechend = function () {
+    submitChat();
+    create_recognition();
+    recognition.start();
+  };
+}
 
 
 function start_recognition() {
@@ -168,6 +166,8 @@ async function postConversation() {
     };
 }
 
+
+create_recognition();
 
 window.onload = postConversation;
 
