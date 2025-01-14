@@ -1,10 +1,11 @@
 
 
-import anthropic
-
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import json
+import os
+
+import anthropic
 
 from fastapi import FastAPI, Form
 from fastapi.responses import (
@@ -20,16 +21,17 @@ import uuid
 import todoaccounts
 import todostore
 
+# Create "db" directory if it does not exist
+if not os.path.exists('db'):
+    os.makedirs('db')
+
 thread_pool = ThreadPoolExecutor()
 convs = {}
 
-
 app = FastAPI()
-
 
 ALL_TOOLS = {}
 ALL_TOOLS_LIST = []
-
 
 def tool(tool_func, name, desc, params={}):
     """params example: {
@@ -57,6 +59,7 @@ def tool(tool_func, name, desc, params={}):
     ALL_TOOLS[name] = result
     ALL_TOOLS_LIST.append(result['spec'])
     return result
+
 
 def add_list_glue(db, name):
     db.add_list(name)
@@ -284,15 +287,15 @@ Your lists:
 {todo_lists}
 {selected_list}
 """}})
-    print("welcome!", jsondata)
+    # print("welcome!", jsondata)
     yield f"data: {jsondata}\n\n"
     yield 'data: {"finish_reason": "stop"}\n\n'
 
     while True:
         chat = await q.get()
-        print("GOT CHAT", chat)
+        # print("GOT CHAT", chat)
         if chat is None:
-            print("EXITING")
+            # print("EXITING")
             break
         if len(history) and history[-1]['role'] == "user":
             history[-1]['content'].append(
@@ -341,8 +344,8 @@ Your lists:
                         }
                     ]
                 })
-                print("GOT RESULT", result)
-                print("TOOL OUTPUT", tool_output)
+                # print("GOT RESULT", result)
+                # print("TOOL OUTPUT", tool_output)
                 jsondata = json.dumps({
                     "content": tool_output
                 })
@@ -350,7 +353,7 @@ Your lists:
                 yield 'data: {"finish_reason": "stop"}\n\n'
         if len(assistant_content):
             history.append({"role": "assistant", "content": assistant_content})
-        print("new history", history)
+        # print("new history", history)
         yield 'data: {"finish_reason": "stop"}\n\n'
 
 

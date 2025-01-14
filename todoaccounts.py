@@ -5,7 +5,7 @@ import sqlite3
 
 class Accounts(object):
     def __init__(self):
-        self.path = "accounts.db"
+        self.path = "db/accounts.db"
         self.db = sqlite3.connect(self.path)
         self.cursor = self.db.cursor()
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS accounts

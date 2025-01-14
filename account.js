@@ -98,7 +98,6 @@ async function submitChat() {
     if (response.ok) {
         console.log("Form submitted successfully!");
         chat.text.value = "";
-
     } else {
         console.error("Form submission failed!");
     }

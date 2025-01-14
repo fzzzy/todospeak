@@ -1,3 +1,5 @@
+
+
 const dialog = document.getElementById('helpDialog');
 const openButton = document.getElementById('help');
 const closeButton = document.getElementById('closeDialog');
@@ -22,3 +24,4 @@ dialog.addEventListener('click', (e) => {
         dialog.close();
     }
 });
+
